@@ -1,6 +1,6 @@
 // Jeûne & Prière — lanceur. Garde le lanceur en mémoire pour qu'il s'ouvre même sans réseau
 // (il affiche alors « Pas de réseau »). L'appli elle-même vient toujours en direct de Google.
-const CACHE = "jp-lanceur-v3";
+const CACHE = "jp-lanceur-v4";
 const COQUILLE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(COQUILLE)).then(() => self.skipWaiting()));

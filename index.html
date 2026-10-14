@@ -43,6 +43,10 @@ button.fire{border:0;background:linear-gradient(135deg,var(--flame),var(--gold))
 button:active{transform:translateY(1px)}
 .link{background:none;border:0;padding:6px;color:rgba(255,255,255,.55);font-weight:400;font-size:13px;text-decoration:underline}
 .foot{position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));left:0;right:0;text-align:center}
+#inst{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));z-index:9;display:flex;align-items:center;gap:6px;padding:6px;border-radius:999px;background:rgba(6,30,71,.92);border:1px solid rgba(251,191,36,.5);box-shadow:0 10px 30px rgba(0,0,0,.35);backdrop-filter:blur(8px)}
+#inst[hidden]{display:none}
+#inst .go{border:0;border-radius:999px;padding:10px 16px;background:linear-gradient(135deg,var(--flame),var(--gold));color:#2a1204;font-size:14px}
+#inst .x{border:0;background:none;color:rgba(255,255,255,.7);padding:8px 10px;font-size:16px}
 @keyframes shine{0%,100%{transform:scale(1);filter:drop-shadow(0 4px 10px rgba(251,191,36,.45))}50%{transform:scale(1.05);filter:drop-shadow(0 4px 18px rgba(251,191,36,.85))}}
 @keyframes breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.12);opacity:1}}
 @keyframes dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-4px)}}
@@ -59,6 +63,7 @@ button:active{transform:translateY(1px)}
   <p class="verse">« Mais cette sorte de démon ne sort que par la prière et par le jeûne. » — Matthieu 17:21</p>
   <div id="zone"></div>
 </section>
+<div id="inst" hidden><button class="go" id="instGo" type="button">⬇ Installer l'appli</button><button class="x" id="instX" type="button" aria-label="Fermer">✕</button></div>
 <div class="foot" id="foot" hidden><button class="link" id="chg" type="button">Changer de lien</button></div>
 
 <script>
@@ -127,6 +132,13 @@ function demarrer(){
 $("chg").onclick=function(){app.removeAttribute("src");LS.set("jp_lanceur","");try{history.replaceState(null,"",location.pathname)}catch(e){}ecranLien()};
 window.addEventListener("online",function(){if(!charge)ouvrir()});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(function(){});
+/* Bouton « Installer l'appli » : Chrome (PC et téléphone) le propose dès que l'installation est possible. */
+var invite=null,boite=$("inst");
+var installee=function(){return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true};
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();invite=e;if(!installee()&&LS.get("jp_inst_x")!=="1")boite.hidden=false});
+$("instGo").onclick=function(){if(!invite)return;invite.prompt();invite.userChoice.then(function(){invite=null;boite.hidden=true})};
+$("instX").onclick=function(){boite.hidden=true;LS.set("jp_inst_x","1")};
+window.addEventListener("appinstalled",function(){boite.hidden=true;invite=null});
 demarrer();
 })();
 </script>
