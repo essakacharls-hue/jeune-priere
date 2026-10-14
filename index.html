@@ -45,6 +45,16 @@ button:active{transform:translateY(1px)}
 .foot{position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));left:0;right:0;text-align:center}
 #inst{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));z-index:9;display:flex;align-items:center;gap:6px;padding:6px;border-radius:999px;background:rgba(6,30,71,.92);border:1px solid rgba(251,191,36,.5);box-shadow:0 10px 30px rgba(0,0,0,.35);backdrop-filter:blur(8px)}
 #inst[hidden]{display:none}
+@media (max-width:700px){#inst{bottom:calc(84px + env(safe-area-inset-bottom))}}
+#aide{position:fixed;inset:0;z-index:20;background:rgba(2,10,29,.72);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+#aide[hidden]{display:none}
+#aide .sheet{width:100%;max-width:520px;max-height:88vh;overflow:auto;background:linear-gradient(180deg,#0b2a63,#061e47);border:1px solid rgba(251,191,36,.35);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -10px 40px rgba(0,0,0,.4)}
+@media (min-width:700px){#aide{align-items:center}}
+#aide h2{margin:0;font-size:19px}
+#aide ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px;font-size:15px;line-height:1.4}
+#aide .warn{background:rgba(251,113,133,.15);border:1px solid rgba(251,113,133,.5);border-radius:14px;padding:10px 12px;font-size:14.5px}
+#aide .diag{font-size:13px;color:rgba(255,255,255,.75);display:grid;gap:4px;background:rgba(0,0,0,.2);border-radius:14px;padding:10px 12px}
+#aide .diag b{color:#fff}
 #inst .go{border:0;border-radius:999px;padding:10px 16px;background:linear-gradient(135deg,var(--flame),var(--gold));color:#2a1204;font-size:14px}
 #inst .x{border:0;background:none;color:rgba(255,255,255,.7);padding:8px 10px;font-size:16px}
 @keyframes shine{0%,100%{transform:scale(1);filter:drop-shadow(0 4px 10px rgba(251,191,36,.45))}50%{transform:scale(1.05);filter:drop-shadow(0 4px 18px rgba(251,191,36,.85))}}
@@ -63,6 +73,7 @@ button:active{transform:translateY(1px)}
   <p class="verse">« Mais cette sorte de démon ne sort que par la prière et par le jeûne. » — Matthieu 17:21</p>
   <div id="zone"></div>
 </section>
+<div id="aide" hidden><div class="sheet" id="aideIn"></div></div>
 <div id="inst" hidden><button class="go" id="instGo" type="button">⬇ Installer l'appli</button><button class="x" id="instX" type="button" aria-label="Fermer">✕</button></div>
 <div class="foot" id="foot" hidden><button class="link" id="chg" type="button">Changer de lien</button></div>
 
@@ -132,13 +143,57 @@ function demarrer(){
 $("chg").onclick=function(){app.removeAttribute("src");LS.set("jp_lanceur","");try{history.replaceState(null,"",location.pathname)}catch(e){}ecranLien()};
 window.addEventListener("online",function(){if(!charge)ouvrir()});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(function(){});
-/* Bouton « Installer l'appli » : Chrome (PC et téléphone) le propose dès que l'installation est possible. */
-var invite=null,boite=$("inst");
-var installee=function(){return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true};
-window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();invite=e;if(!installee()&&LS.get("jp_inst_x")!=="1")boite.hidden=false});
-$("instGo").onclick=function(){if(!invite)return;invite.prompt();invite.userChoice.then(function(){invite=null;boite.hidden=true})};
+/* Installation : bouton « Installer l'appli » + aide pas à pas selon l'appareil + diagnostic. */
+var VERSION="Lanceur v5";
+var invite=null,boite=$("inst"),aide=$("aide");
+var UA=navigator.userAgent;
+var installee=function(){return window.matchMedia("(display-mode: standalone)").matches||window.matchMedia("(display-mode: minimal-ui)").matches||window.navigator.standalone===true};
+var appareil=function(){
+  if(/FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)/i.test(UA))return"inapp";
+  if(/iPhone|iPad|iPod/i.test(UA))return/CriOS/i.test(UA)?"ios-chrome":"ios";
+  if(/Android/i.test(UA))return/SamsungBrowser/i.test(UA)?"samsung":"android";
+  if(/Edg\//.test(UA))return"edge";
+  if(/Firefox\//.test(UA))return"firefox";
+  if(/Chrome\//.test(UA))return"chrome";
+  return"autre"};
+var ETAPES={
+  inapp:'<div class="warn">⚠️ Le lien est ouvert <b>dans WhatsApp</b> (ou une autre appli) : on ne peut pas installer d\'ici.</div><ol><li>Touche <b>⋮</b> en haut à droite.</li><li>Choisis <b>Ouvrir dans Chrome</b> (ou « Ouvrir dans le navigateur »).</li><li>Dans Chrome, touche le bouton doré <b>⬇ Installer l\'appli</b>.</li></ol>',
+  android:'<ol><li>Touche <b>⋮</b> en haut à droite de Chrome.</li><li>Choisis <b>Installer l\'application</b> ou <b>Ajouter à l\'écran d\'accueil</b>.</li><li>Si on te demande, choisis <b>Installer</b> (pas « Créer un raccourci »).</li><li>Ton icône apparaît sur l\'écran d\'accueil.</li></ol>',
+  samsung:'<ol><li>Touche <b>☰</b> en bas à droite.</li><li><b>Ajouter la page à</b> › <b>Écran d\'accueil</b>.</li><li>Ou ouvre plutôt ce lien dans <b>Chrome</b> (conseillé).</li></ol>',
+  ios:'<ol><li>Touche le bouton <b>Partager</b> (carré avec une flèche vers le haut).</li><li>Fais défiler et choisis <b>Sur l\'écran d\'accueil</b>.</li><li>Touche <b>Ajouter</b>.</li></ol>',
+  "ios-chrome":'<ol><li>Touche le bouton <b>Partager</b> (dans la barre d\'adresse ou le menu ⋯).</li><li>Choisis <b>Sur l\'écran d\'accueil</b>.</li><li>Si ce choix n\'existe pas : ouvre le lien dans <b>Safari</b> et fais Partager › Sur l\'écran d\'accueil.</li></ol>',
+  chrome:'<ol><li>Regarde à droite de la barre d\'adresse : clique l\'icône <b>écran avec une flèche ⤓</b> › <b>Installer</b>.</li><li>Sinon : menu <b>⋮</b> › <b>Caster, enregistrer et partager</b> › <b>Installer la page en tant qu\'appli</b>.</li><li>Toujours rien ? Menu <b>⋮</b> › <b>Caster, enregistrer et partager</b> › <b>Créer un raccourci</b> › coche <b>Ouvrir dans une fenêtre</b> › <b>Créer</b>. Le résultat est le même : une icône sur le bureau qui ouvre l\'appli dans sa fenêtre.</li></ol>',
+  edge:'<ol><li>Menu <b>⋯</b> › <b>Applications</b> › <b>Installer ce site en tant qu\'application</b>.</li><li>Clique <b>Installer</b>.</li></ol>',
+  firefox:'<div class="warn">Firefox ne sait pas installer les applis web.</div><ol><li>Ouvre ce lien dans <b>Chrome</b> ou <b>Edge</b>.</li><li>Puis clique le bouton doré <b>⬇ Installer l\'appli</b>.</li></ol>',
+  autre:'<ol><li>Ouvre ce lien dans <b>Chrome</b>.</li><li>Puis clique le bouton doré <b>⬇ Installer l\'appli</b>.</li></ol>'};
+function diagnostic(cb){var L=[],ok=function(b,t){L.push((b?"✅ ":"❌ ")+t)};
+  ok(location.protocol==="https:","Adresse sécurisée (https)");
+  ok(!/script\.google\.com/.test(location.hostname),"Page du lanceur (github.io), pas le lien direct");
+  ok(!installee(),installee()?"Déjà installée (tu es dans l'appli)":"Pas encore installée sur cet appareil");
+  ok(!!invite,invite?"Chrome propose l'installation":"Chrome ne propose pas (encore) l'installation automatique");
+  var swp="serviceWorker" in navigator?navigator.serviceWorker.getRegistration():Promise.resolve(null);
+  Promise.all([fetch("manifest.webmanifest",{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).catch(function(){return null}),
+    new Promise(function(res){var i=new Image();i.onload=function(){res(i.naturalWidth)};i.onerror=function(){res(0)};i.src="icon-512.png?"+Date.now()}),swp])
+  .then(function(v){var m=v[0];ok(!!m,m?"Fichier manifest.webmanifest trouvé":"Fichier manifest.webmanifest introuvable sur GitHub");
+    if(m)ok(!!m.start_url,"Manifest à jour (start_url)");
+    ok(v[1]>=512,v[1]?"Icône 512 trouvée":"icon-512.png introuvable sur GitHub");
+    ok(!!v[2],v[2]?"Service worker actif":"Service worker pas actif (recharge la page une fois)");
+    cb(L)})}
+function ouvrirAide(){var d=appareil();
+  $("aideIn").innerHTML='<h2>⬇ Installer l\'appli</h2>'+(ETAPES[d]||ETAPES.autre)+
+    '<div class="diag" id="diag"><b>Vérification…</b></div><div class="btns"><button class="fire" id="aideOk" type="button">J\'ai compris</button></div>';
+  aide.hidden=false;$("aideOk").onclick=function(){aide.hidden=true};
+  diagnostic(function(L){$("diag").innerHTML="<b>Vérification ("+VERSION+")</b>"+L.map(function(x){return"<span>"+esc(x)+"</span>"}).join("")})}
+aide.addEventListener("click",function(e){if(e.target===aide)aide.hidden=true});
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();invite=e;if(!installee())boite.hidden=false});
+$("instGo").onclick=function(){
+  if(invite){invite.prompt();invite.userChoice.then(function(c){invite=null;if(c&&c.outcome==="accepted")boite.hidden=true;else ouvrirAide()})}
+  else ouvrirAide()};
 $("instX").onclick=function(){boite.hidden=true;LS.set("jp_inst_x","1")};
-window.addEventListener("appinstalled",function(){boite.hidden=true;invite=null});
+window.addEventListener("appinstalled",function(){boite.hidden=true;invite=null;aide.hidden=true});
+// le bouton apparaît aussi quand Chrome ne propose rien : il ouvre alors l'aide pas à pas
+setTimeout(function(){if(!installee()&&LS.get("jp_inst_x")!=="1")boite.hidden=false},2500);
+if(new URLSearchParams(location.search).has("aide"))setTimeout(ouvrirAide,300);
 demarrer();
 })();
 </script>
