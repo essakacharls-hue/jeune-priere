@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#061e47">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jeûne & Prière">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Jeûne & Prière</title>
+<style>
+/* Lanceur : bleu nuit et or, comme l'icône (mains en prière, croix lumineuse, couverts du jeûne). */
+:root{--n1:#061e47;--n2:#12357a;--n3:#020c22;--flame:#f59e0b;--gold:#fbbf24;--ink:#fff;--soft:rgba(255,255,255,.72);
+  --glass:rgba(255,255,255,.09);--line:rgba(255,255,255,.18);--bad:#fb7185;--ok:#34d399;
+  --font:"Sansation","Trebuchet MS","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--n1);color:var(--ink);font-family:var(--font);overflow:hidden}
+body{background:radial-gradient(120% 80% at 50% 0%,#17408f 0%,var(--n1) 55%,#020a1d 100%)}
+#app{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f2fb;opacity:0;transition:opacity .45s ease;pointer-events:none}
+#app.on{opacity:1;pointer-events:auto}
+.scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));text-align:center;transition:opacity .4s ease}
+.scene.off{opacity:0;pointer-events:none}
+.glow{position:absolute;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(251,191,36,.35),rgba(251,191,36,0) 65%);filter:blur(8px);animation:breathe 3.2s ease-in-out infinite;z-index:-1}
+.logo{width:140px;height:140px;border-radius:34px;display:grid;place-items:center;background:#061e47;overflow:hidden;box-shadow:0 18px 50px rgba(251,191,36,.35),inset 0 1px 0 rgba(255,255,255,.15)}
+.logo img{width:100%;height:100%;display:block;filter:drop-shadow(0 4px 10px rgba(251,191,36,.6));animation:shine 3.2s ease-in-out infinite}
+h1{margin:0;font-size:28px;letter-spacing:.3px}
+.verse{margin:-8px 0 0;color:var(--soft);font-size:14px;max-width:320px;font-style:italic}
+.status{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--soft);min-height:24px}
+.dots{display:inline-flex;gap:5px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:dot 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+.card{width:100%;max-width:420px;background:var(--glass);border:1px solid var(--line);border-radius:22px;padding:20px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;gap:12px;text-align:left;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.card h2{margin:0;font-size:19px;display:flex;align-items:center;gap:8px}
+.card p{margin:0;color:var(--soft);font-size:14.5px;line-height:1.45}
+.card .detail{font-size:12.5px;color:rgba(255,255,255,.55)}
+.err{color:var(--bad)!important;font-size:13.5px!important;min-height:1em}
+input{width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:#fff;font:inherit;font-size:14px;outline:none}
+input:focus{border-color:var(--flame);box-shadow:0 0 0 3px rgba(251,191,36,.25)}
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+button{font:inherit;font-weight:700;font-size:15px;border-radius:14px;padding:12px 16px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+button.fire{border:0;background:linear-gradient(135deg,var(--flame),var(--gold));color:#2a1204;box-shadow:0 8px 24px rgba(251,191,36,.35);flex:1;justify-content:center}
+button:active{transform:translateY(1px)}
+.link{background:none;border:0;padding:6px;color:rgba(255,255,255,.55);font-weight:400;font-size:13px;text-decoration:underline}
+.foot{position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));left:0;right:0;text-align:center}
+@keyframes shine{0%,100%{transform:scale(1);filter:drop-shadow(0 4px 10px rgba(251,191,36,.45))}50%{transform:scale(1.05);filter:drop-shadow(0 4px 18px rgba(251,191,36,.85))}}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.12);opacity:1}}
+@keyframes dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-4px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head><body>
+
+<iframe id="app" title="Jeûne & Prière" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+
+<section class="scene" id="scene">
+  <div class="glow"></div>
+  <div class="logo"><img src="icon-512.png" alt=""></div>
+  <h1>Jeûne & Prière</h1>
+  <p class="verse">« Mais cette sorte de démon ne sort que par la prière et par le jeûne. » — Matthieu 17:21</p>
+  <div id="zone"></div>
+</section>
+<div class="foot" id="foot" hidden><button class="link" id="chg" type="button">Changer de lien</button></div>
+
+<script>
+(function(){
+"use strict";
+var LS={get:function(k){try{return localStorage.getItem(k)||""}catch(e){return""}},
+        set:function(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}}};
+var DELAI=window.JP_DELAI||30000;                 // temps max pour que l'appli réponde
+var $=function(id){return document.getElementById(id)};
+var app=$("app"),scene=$("scene"),zone=$("zone"),foot=$("foot");
+var minuteur=null,charge=false;
+var esc=function(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
+
+/** Transforme n'importe quel lien reçu en adresse de l'appli : …/exec?k=… */
+function cibleDepuis(txt){
+  var u;try{u=new URL(String(txt||"").trim())}catch(e){return{err:"Ce n'est pas un lien complet : il doit commencer par https://"}}
+  var api=u.searchParams.get("api")||"",k=u.searchParams.get("k")||"";
+  if(!api&&/(^|\.)script\.google\.com$/.test(u.hostname))api=u.origin+u.pathname;
+  if(/\/dev$/.test(api))return{err:"Ce lien finit par /dev : c'est l'adresse de test, elle ne marche que pour toi dans l'éditeur. Prends le lien du menu « Liens d'installation » du classeur."};
+  if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(api))return{err:"Je ne trouve pas l'adresse du serveur dans ce lien (elle doit finir par /exec)."};
+  if(!k)return{err:"Ce lien ne contient pas ta clé personnelle (…k=…)."};
+  return{url:api+"?k="+encodeURIComponent(k),api:api,k:k}}
+
+function memoriser(c){LS.set("jp_lanceur",c.url);
+  // on garde le lien dans l'adresse : l'icône installée le retrouve toujours (utile sur iPhone)
+  try{history.replaceState(null,"","?api="+encodeURIComponent(c.api)+"&k="+encodeURIComponent(c.k))}catch(e){}}
+
+function montrer(html){charge=false;clearTimeout(minuteur);app.classList.remove("on");scene.classList.remove("off");zone.innerHTML=html}
+function attente(txt){montrer('<div class="status"><span class="dots"><i></i><i></i><i></i></span><span>'+esc(txt)+'</span></div>');foot.hidden=false}
+
+function ecranLien(msg){foot.hidden=true;
+  montrer('<form class="card" id="f"><h2>🔗 Relier ton appli</h2>'+
+    '<p>Colle ici <b>ton lien personnel</b>. Tu le trouves dans le classeur Google Sheets : menu <b>Jeûne & Prière › Liens d\'installation</b>.</p>'+
+    '<input id="lien" inputmode="url" autocomplete="off" placeholder="https://…?api=…&k=…  ou  …/exec?k=…">'+
+    '<p class="err" id="e">'+esc(msg||"")+'</p>'+
+    '<div class="btns"><button class="fire" type="submit">✓ Relier</button></div></form>');
+  $("f").addEventListener("submit",function(ev){ev.preventDefault();var c=cibleDepuis($("lien").value);
+    if(c.err){$("e").textContent=c.err;return}memoriser(c);ouvrir()})}
+
+function ecranHorsLigne(){foot.hidden=false;
+  montrer('<div class="card"><h2>📴 Pas de réseau</h2><p>Ton téléphone n\'a pas Internet. Active le wifi ou les données mobiles : l\'appli s\'ouvrira toute seule dès que le réseau revient.</p>'+
+    '<div class="btns"><button class="fire" id="r" type="button">↻ Réessayer</button></div></div>');
+  $("r").onclick=demarrer}
+
+function ecranLent(){foot.hidden=false;var url=LS.get("jp_lanceur");
+  montrer('<div class="card"><h2>⚠️ Le serveur ne répond pas</h2><p>L\'appli n\'a pas répondu en '+Math.round(DELAI/1000)+' secondes. Le réseau est peut-être faible, ou le serveur a un souci.</p>'+
+    '<p class="detail">Si ça dure : dans Apps Script, lance <b>testServeur</b> et vérifie le déploiement (Exécuter en tant que : Moi · Qui a accès : Tout le monde).</p>'+
+    '<div class="btns"><button class="fire" id="r" type="button">↻ Réessayer</button><button id="b" type="button">↗ Ouvrir dans le navigateur</button></div></div>');
+  $("r").onclick=demarrer;$("b").onclick=function(){location.href=url}}
+
+function ouvrir(){var url=LS.get("jp_lanceur");if(!url){ecranLien();return}
+  if(!navigator.onLine){ecranHorsLigne();return}
+  attente("Ouverture de ton appli…");
+  app.onload=function(){if(!app.getAttribute("src"))return;charge=true;clearTimeout(minuteur);
+    app.classList.add("on");setTimeout(function(){if(charge){scene.classList.add("off");foot.hidden=true}},450)};
+  minuteur=setTimeout(function(){if(!charge){app.removeAttribute("src");ecranLent()}},DELAI);
+  app.src=url}
+
+function demarrer(){
+  var q=new URLSearchParams(location.search);
+  if(q.get("api")||q.get("k")||q.get("go")){
+    var c=cibleDepuis(q.get("go")||location.href);
+    if(c.err){ecranLien(c.err);return}memoriser(c)}
+  ouvrir()}
+
+$("chg").onclick=function(){app.removeAttribute("src");LS.set("jp_lanceur","");try{history.replaceState(null,"",location.pathname)}catch(e){}ecranLien()};
+window.addEventListener("online",function(){if(!charge)ouvrir()});
+if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(function(){});
+demarrer();
+})();
+</script>
+</body></html>
