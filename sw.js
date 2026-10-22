@@ -1,6 +1,6 @@
 // Jeûne & Prière — lanceur. Réseau d'abord (toujours la dernière version), copie en secours sans réseau.
 // Il ne touche jamais aux appels vers Google (script.google.com).
-const CACHE = "jp-lanceur-v5";
+const CACHE = "jp-lanceur-v7";
 const COQUILLE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(COQUILLE)).then(() => self.skipWaiting()));

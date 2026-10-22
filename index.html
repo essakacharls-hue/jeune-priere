@@ -50,6 +50,18 @@ button:active{transform:translateY(1px)}
 #aide[hidden]{display:none}
 #aide .sheet{width:100%;max-width:520px;max-height:88vh;overflow:auto;background:linear-gradient(180deg,#0b2a63,#061e47);border:1px solid rgba(251,191,36,.35);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -10px 40px rgba(0,0,0,.4)}
 @media (min-width:700px){#aide{align-items:center}}
+#rec{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(2,10,29,.86);backdrop-filter:blur(6px)}
+#rec[hidden]{display:none}
+#rec .box{width:100%;max-width:460px;background:linear-gradient(180deg,#0b2a63,#061e47);border:1px solid rgba(251,191,36,.4);border-radius:26px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#rec h2{margin:0;font-size:19px}
+.micro{width:120px;height:120px;border-radius:50%;display:grid;place-items:center;font-size:48px;background:radial-gradient(circle at 35% 30%,#fb7185,#e11d48);box-shadow:0 0 0 0 rgba(225,29,72,.6);animation:onde 1.6s infinite}
+.micro.pause{animation:none;background:radial-gradient(circle at 35% 30%,#64748b,#334155)}
+@keyframes onde{0%{box-shadow:0 0 0 0 rgba(225,29,72,.55)}70%{box-shadow:0 0 0 26px rgba(225,29,72,0)}100%{box-shadow:0 0 0 0 rgba(225,29,72,0)}}
+#recT{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:1px}
+#recTxt{width:100%;min-height:90px;max-height:32vh;overflow:auto;text-align:left;background:rgba(0,0,0,.25);border-radius:14px;padding:12px;font-size:15px;line-height:1.45;color:rgba(255,255,255,.9)}
+#recTxt:empty::before{content:"Le texte dicté s'affiche ici…";color:rgba(255,255,255,.45)}
+#recNote{font-size:13px;color:#fde68a;min-height:1em}
+#rec .btns{width:100%}
 #aide h2{margin:0;font-size:19px}
 #aide ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px;font-size:15px;line-height:1.4}
 #aide .warn{background:rgba(251,113,133,.15);border:1px solid rgba(251,113,133,.5);border-radius:14px;padding:10px 12px;font-size:14.5px}
@@ -64,7 +76,7 @@ button:active{transform:translateY(1px)}
 </style>
 </head><body>
 
-<iframe id="app" title="Jeûne & Prière" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+<iframe id="app" title="Jeûne & Prière" allow="microphone; clipboard-read; clipboard-write; fullscreen"></iframe>
 
 <section class="scene" id="scene">
   <div class="glow"></div>
@@ -73,6 +85,9 @@ button:active{transform:translateY(1px)}
   <p class="verse">« Mais cette sorte de démon ne sort que par la prière et par le jeûne. » — Matthieu 17:21</p>
   <div id="zone"></div>
 </section>
+<div id="rec" hidden><div class="box"><h2 id="recTitre">🎙 J'enregistre ta voix</h2><div class="micro" id="recMic">🎤</div><div id="recT">00:00</div>
+<div id="recTxt"></div><div id="recNote"></div>
+<div class="btns"><button class="fire" id="recFin" type="button">⏹ Terminer et garder</button><button id="recAnn" type="button">✕ Annuler</button></div></div></div>
 <div id="aide" hidden><div class="sheet" id="aideIn"></div></div>
 <div id="inst" hidden><button class="go" id="instGo" type="button">⬇ Installer l'appli</button><button class="x" id="instX" type="button" aria-label="Fermer">✕</button></div>
 <div class="foot" id="foot" hidden><button class="link" id="chg" type="button">Changer de lien</button></div>
@@ -144,7 +159,7 @@ $("chg").onclick=function(){app.removeAttribute("src");LS.set("jp_lanceur","");t
 window.addEventListener("online",function(){if(!charge)ouvrir()});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(function(){});
 /* Installation : bouton « Installer l'appli » + aide pas à pas selon l'appareil + diagnostic. */
-var VERSION="Lanceur v5";
+var VERSION="Lanceur v7";
 var invite=null,boite=$("inst"),aide=$("aide");
 var UA=navigator.userAgent;
 var installee=function(){return window.matchMedia("(display-mode: standalone)").matches||window.matchMedia("(display-mode: minimal-ui)").matches||window.navigator.standalone===true};
@@ -194,6 +209,52 @@ window.addEventListener("appinstalled",function(){boite.hidden=true;invite=null;
 // le bouton apparaît aussi quand Chrome ne propose rien : il ouvre alors l'aide pas à pas
 setTimeout(function(){if(!installee()&&LS.get("jp_inst_x")!=="1")boite.hidden=false},2500);
 if(new URLSearchParams(location.search).has("aide"))setTimeout(ouvrirAide,300);
+/* ===== Dictée et enregistrement de la voix pour l'appli =====
+   L'appli tourne dans un cadre Google qui n'a pas le droit d'utiliser le micro.
+   Le lanceur, lui, l'a : l'appli lui demande d'enregistrer, il renvoie le texte et l'audio. */
+var REC={src:null,origin:"",id:"",flux:null,mr:null,morceaux:[],sr:null,actif:false,t0:0,tic:null,texte:"",provisoire:"",audioVoulu:true,max:15*60};
+var recBox=$("rec"),recT=$("recT"),recTxt=$("recTxt"),recNote=$("recNote"),recMic=$("recMic");
+function mmss(s){s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function afficherTexte(){recTxt.textContent=(REC.texte+" "+REC.provisoire).trim()}
+function renvoyer(msg){try{REC.src&&REC.src.postMessage(Object.assign({jp:"dictee-fin",id:REC.id},msg),REC.origin||"*")}catch(e){}}
+function arreterTout(){REC.actif=false;clearInterval(REC.tic);try{REC.sr&&REC.sr.stop()}catch(e){}
+  try{REC.flux&&REC.flux.getTracks().forEach(function(t){t.stop()})}catch(e){}}
+function lancerReco(){var SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){recNote.textContent="Ce navigateur n'écrit pas le texte tout seul : l'audio est quand même enregistré.";return}
+  var r=new SR();r.lang="fr-FR";r.continuous=true;r.interimResults=true;REC.sr=r;
+  r.onresult=function(ev){var tmp="";for(var k=ev.resultIndex;k<ev.results.length;k++){var t=ev.results[k][0].transcript;if(ev.results[k].isFinal)REC.texte=(REC.texte+" "+t).trim();else tmp+=t}REC.provisoire=tmp;afficherTexte()};
+  r.onerror=function(ev){if(ev.error==="not-allowed"||ev.error==="service-not-allowed"||ev.error==="audio-capture"){REC.sr=null;recNote.textContent=REC.mr?"Le texte ne peut pas s'écrire en même temps sur cet appareil : l'audio est bien enregistré, tu pourras l'écouter et l'écrire.":"Micro refusé : autorise le micro pour ce site (cadenas à gauche de l'adresse)."}};
+  r.onend=function(){REC.provisoire="";afficherTexte();if(REC.actif&&REC.sr){try{r.start()}catch(e){}}};   // Android s'arrête aux silences : on relance
+  try{r.start()}catch(e){}}
+function ouvrirEnregistreur(m,source,origin){
+  if(REC.actif){return}
+  REC.src=source;REC.origin=origin;REC.id=m.id||"";REC.texte="";REC.provisoire="";REC.morceaux=[];REC.mr=null;REC.sr=null;REC.audioVoulu=m.audio!==false;
+  $("recTitre").textContent=REC.audioVoulu?"🎙 J'enregistre ta voix":"🎤 Dictée";recNote.textContent="";recTxt.textContent="";recT.textContent="00:00";recMic.classList.remove("pause");recBox.hidden=false;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){recNote.textContent="Ce navigateur ne permet pas d'utiliser le micro.";return}
+  navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}).then(function(flux){
+    REC.flux=flux;REC.actif=true;REC.t0=Date.now();
+    if(REC.audioVoulu&&window.MediaRecorder){var types=["audio/webm;codecs=opus","audio/mp4","audio/webm","audio/ogg;codecs=opus"],type="";
+      for(var i=0;i<types.length;i++)if(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(types[i])){type=types[i];break}
+      try{REC.mr=new MediaRecorder(flux,type?{mimeType:type,audioBitsPerSecond:32000}:{audioBitsPerSecond:32000})}catch(e){REC.mr=new MediaRecorder(flux)}
+      REC.mr.ondataavailable=function(e){if(e.data&&e.data.size)REC.morceaux.push(e.data)};REC.mr.start(1000)}
+    lancerReco();
+    REC.tic=setInterval(function(){var s=(Date.now()-REC.t0)/1000;recT.textContent=mmss(s);if(s>=REC.max){terminer()}},250);
+  }).catch(function(){recMic.classList.add("pause");recNote.textContent="Micro refusé. Touche le cadenas à gauche de l'adresse › Micro › Autoriser, puis réessaie. Sinon, utilise « 📎 Audio du téléphone » dans l'appli."})}
+function terminer(){if(!REC.actif&&!REC.flux){recBox.hidden=true;renvoyer({annule:true,erreur:recNote.textContent});return}
+  var duree=Math.round((Date.now()-REC.t0)/1000);var texte=(REC.texte+" "+REC.provisoire).trim();arreterTout();recMic.classList.add("pause");
+  var fin=function(audio){recBox.hidden=true;REC.flux=null;renvoyer({texte:texte,audio:audio,duree:duree})};
+  if(REC.mr&&REC.mr.state!=="inactive"){var mr=REC.mr;mr.onstop=function(){var blob=new Blob(REC.morceaux,{type:mr.mimeType||"audio/webm"});
+      if(!blob.size){fin(null);return}var fr=new FileReader();fr.onload=function(){var b64=String(fr.result).split(",")[1];fin({mime:blob.type.split(";")[0]||"audio/webm",b64:b64,taille:blob.size})};fr.readAsDataURL(blob)};
+    try{mr.stop()}catch(e){fin(null)}}
+  else fin(null)}
+$("recFin").onclick=terminer;
+$("recAnn").onclick=function(){arreterTout();REC.flux=null;recBox.hidden=true;renvoyer({annule:true})};
+window.addEventListener("message",function(e){
+  var hote="";try{hote=new URL(e.origin).hostname}catch(x){return}
+  if(!/(^|\.)googleusercontent\.com$|(^|\.)script\.google\.com$/.test(hote))return;   // seulement ton appli
+  var m=e.data||{};
+  if(m.jp==="ping-lanceur"){try{e.source.postMessage({jp:"lanceur-ok",v:VERSION},e.origin)}catch(x){}}
+  else if(m.jp==="dictee")ouvrirEnregistreur(m,e.source,e.origin);
+});
 demarrer();
 })();
 </script>
