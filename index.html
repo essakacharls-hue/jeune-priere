@@ -95,8 +95,13 @@ button:active{transform:translateY(1px)}
 <script>
 (function(){
 "use strict";
-var LS={get:function(k){try{return localStorage.getItem(k)||""}catch(e){return""}},
-        set:function(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}}};
+/* Plusieurs applis (Jeûne & Prière, Boussole…) partagent la même adresse github.io : chaque clé est
+   préfixée par le nom de l'appli et son dossier, pour qu'aucune n'écrase le lien de l'autre. */
+var NS="jeune-priere|"+location.pathname.replace(/index\.html$/,"")+"|";
+var LS={get:function(k){try{return localStorage.getItem(NS+k)||""}catch(e){return""}},
+        set:function(k,v){try{v?localStorage.setItem(NS+k,v):localStorage.removeItem(NS+k)}catch(e){}}};
+/* Le lien gardé doit être celui de Jeûne & Prière : on refuse un lien d'une autre appli. */
+function lienAutreAppli(url){try{return url&&!/^https:\/\/script\.google\.com\//.test(url)}catch(e){return true}}
 var DELAI=window.JP_DELAI||30000;                 // temps max pour que l'appli réponde
 var $=function(id){return document.getElementById(id)};
 var app=$("app"),scene=$("scene"),zone=$("zone"),foot=$("foot");
@@ -140,7 +145,7 @@ function ecranLent(){foot.hidden=false;var url=LS.get("jp_lanceur");
     '<div class="btns"><button class="fire" id="r" type="button">↻ Réessayer</button><button id="b" type="button">↗ Ouvrir dans le navigateur</button></div></div>');
   $("r").onclick=demarrer;$("b").onclick=function(){location.href=url}}
 
-function ouvrir(){var url=LS.get("jp_lanceur");if(!url){ecranLien();return}
+function ouvrir(){var url=LS.get("jp_lanceur");if(lienAutreAppli(url)){LS.set("jp_lanceur","");url=""}if(!url){ecranLien();return}
   if(!navigator.onLine){ecranHorsLigne();return}
   attente("Ouverture de ton appli…");
   app.onload=function(){if(!app.getAttribute("src"))return;charge=true;clearTimeout(minuteur);
@@ -159,7 +164,7 @@ $("chg").onclick=function(){app.removeAttribute("src");LS.set("jp_lanceur","");t
 window.addEventListener("online",function(){if(!charge)ouvrir()});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(function(){});
 /* Installation : bouton « Installer l'appli » + aide pas à pas selon l'appareil + diagnostic. */
-var VERSION="Lanceur v7";
+var VERSION="Lanceur v9";
 var invite=null,boite=$("inst"),aide=$("aide");
 var UA=navigator.userAgent;
 var installee=function(){return window.matchMedia("(display-mode: standalone)").matches||window.matchMedia("(display-mode: minimal-ui)").matches||window.navigator.standalone===true};
@@ -177,15 +182,15 @@ var ETAPES={
   samsung:'<ol><li>Touche <b>☰</b> en bas à droite.</li><li><b>Ajouter la page à</b> › <b>Écran d\'accueil</b>.</li><li>Ou ouvre plutôt ce lien dans <b>Chrome</b> (conseillé).</li></ol>',
   ios:'<ol><li>Touche le bouton <b>Partager</b> (carré avec une flèche vers le haut).</li><li>Fais défiler et choisis <b>Sur l\'écran d\'accueil</b>.</li><li>Touche <b>Ajouter</b>.</li></ol>',
   "ios-chrome":'<ol><li>Touche le bouton <b>Partager</b> (dans la barre d\'adresse ou le menu ⋯).</li><li>Choisis <b>Sur l\'écran d\'accueil</b>.</li><li>Si ce choix n\'existe pas : ouvre le lien dans <b>Safari</b> et fais Partager › Sur l\'écran d\'accueil.</li></ol>',
-  chrome:'<ol><li>Regarde à droite de la barre d\'adresse : clique l\'icône <b>écran avec une flèche ⤓</b> › <b>Installer</b>.</li><li>Sinon : menu <b>⋮</b> › <b>Caster, enregistrer et partager</b> › <b>Installer la page en tant qu\'appli</b>.</li><li>Toujours rien ? Menu <b>⋮</b> › <b>Caster, enregistrer et partager</b> › <b>Créer un raccourci</b> › coche <b>Ouvrir dans une fenêtre</b> › <b>Créer</b>. Le résultat est le même : une icône sur le bureau qui ouvre l\'appli dans sa fenêtre.</li></ol>',
-  edge:'<ol><li>Menu <b>⋯</b> › <b>Applications</b> › <b>Installer ce site en tant qu\'application</b>.</li><li>Clique <b>Installer</b>.</li></ol>',
+  chrome:'<div class="warn" style="background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.5)">✅ Tu vois <b>« Open in app »</b> ou <b>« Ouvrir dans l\'application »</b> à droite de la barre d\'adresse ? Alors l\'appli est <b>déjà installée</b> sur ce PC : clique ce bouton, ou cherche « Jeûne & Prière » dans le menu Démarrer. Chrome ne propose pas d\'installer deux fois.</div><ol><li>Regarde à droite de la barre d\'adresse : clique l\'icône <b>écran avec une flèche ⤓</b> › <b>Installer</b>.</li><li>Sinon : menu <b>⋮</b> › <b>Caster, enregistrer et partager</b> › <b>Installer la page en tant qu\'appli</b>.</li><li>Toujours rien ? Menu <b>⋮</b> › <b>Caster, enregistrer et partager</b> › <b>Créer un raccourci</b> › coche <b>Ouvrir dans une fenêtre</b> › <b>Créer</b>. Le résultat est le même : une icône sur le bureau qui ouvre l\'appli dans sa fenêtre.</li></ol>',
+  edge:'<div class="warn" style="background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.5)">Si Edge affiche « Ouvrir dans l\'application », l\'appli est déjà installée.</div><ol><li>Menu <b>⋯</b> › <b>Applications</b> › <b>Installer ce site en tant qu\'application</b>.</li><li>Clique <b>Installer</b>.</li></ol>',
   firefox:'<div class="warn">Firefox ne sait pas installer les applis web.</div><ol><li>Ouvre ce lien dans <b>Chrome</b> ou <b>Edge</b>.</li><li>Puis clique le bouton doré <b>⬇ Installer l\'appli</b>.</li></ol>',
   autre:'<ol><li>Ouvre ce lien dans <b>Chrome</b>.</li><li>Puis clique le bouton doré <b>⬇ Installer l\'appli</b>.</li></ol>'};
 function diagnostic(cb){var L=[],ok=function(b,t){L.push((b?"✅ ":"❌ ")+t)};
   ok(location.protocol==="https:","Adresse sécurisée (https)");
   ok(!/script\.google\.com/.test(location.hostname),"Page du lanceur (github.io), pas le lien direct");
   ok(!installee(),installee()?"Déjà installée (tu es dans l'appli)":"Pas encore installée sur cet appareil");
-  ok(!!invite,invite?"Chrome propose l'installation":"Chrome ne propose pas (encore) l'installation automatique");
+  ok(!!invite,invite?"Chrome propose l'installation":"Chrome ne propose pas l'installation : souvent parce qu'elle est déjà installée (bouton « Open in app » dans la barre d'adresse)");
   var swp="serviceWorker" in navigator?navigator.serviceWorker.getRegistration():Promise.resolve(null);
   Promise.all([fetch("manifest.webmanifest",{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).catch(function(){return null}),
     new Promise(function(res){var i=new Image();i.onload=function(){res(i.naturalWidth)};i.onerror=function(){res(0)};i.src="icon-512.png?"+Date.now()}),swp])
