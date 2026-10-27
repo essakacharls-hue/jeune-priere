@@ -1,7 +1,7 @@
 // Jeûne & Prière — lanceur. Réseau d'abord (toujours la dernière version), copie en secours sans réseau.
 // Il ne touche jamais aux appels vers Google (script.google.com).
 // Les caches de cette appli commencent par « jp-lanceur- » : on ne supprime jamais ceux de Boussole ou d'une autre appli.
-const CACHE = "jp-lanceur-v9";
+const CACHE = "jp-lanceur-v10";
 const COQUILLE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(COQUILLE)).then(() => self.skipWaiting()));

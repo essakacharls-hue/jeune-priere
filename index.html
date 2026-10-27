@@ -164,7 +164,7 @@ $("chg").onclick=function(){app.removeAttribute("src");LS.set("jp_lanceur","");t
 window.addEventListener("online",function(){if(!charge)ouvrir()});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(function(){});
 /* Installation : bouton « Installer l'appli » + aide pas à pas selon l'appareil + diagnostic. */
-var VERSION="Lanceur v9";
+var VERSION="Lanceur v10";
 var invite=null,boite=$("inst"),aide=$("aide");
 var UA=navigator.userAgent;
 var installee=function(){return window.matchMedia("(display-mode: standalone)").matches||window.matchMedia("(display-mode: minimal-ui)").matches||window.navigator.standalone===true};
@@ -259,6 +259,7 @@ window.addEventListener("message",function(e){
   var m=e.data||{};
   if(m.jp==="ping-lanceur"){try{e.source.postMessage({jp:"lanceur-ok",v:VERSION},e.origin)}catch(x){}}
   else if(m.jp==="dictee")ouvrirEnregistreur(m,e.source,e.origin);
+  else if(m.jp==="recharger"){location.reload()}   // nouvelle version de l'appli : on recharge tout
 });
 demarrer();
 })();
